@@ -72,7 +72,24 @@
        * @param $url url
        */
       private static function doGetRequest($url) {
-        $client = self::getClient();
+        $options = array(
+          CURLOPT_RETURNTRANSFER => true,   // return web page
+          CURLOPT_HEADER => false,  // don't return headers
+          CURLOPT_FOLLOWLOCATION => true,   // follow redirects
+          CURLOPT_MAXREDIRS => 10,     // stop after 10 redirects
+        ); 
+    
+        $ch = curl_init($url);
+        curl_setopt_array($ch, $options);
+        $content  = curl_exec($ch);
+        curl_close($ch);
+        
+        return $content;
+
+
+
+
+        /*$client = self::getClient();
 
         try {
           $response = $client->get($url, [
@@ -89,7 +106,7 @@
           error_log(print_r($exception,true));
         }
 
-        return $response->getBody()->getContents();
+        return $response->getBody()->getContents();*/
       }
 
     }
