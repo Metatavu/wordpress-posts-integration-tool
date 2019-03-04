@@ -83,30 +83,8 @@
         curl_setopt_array($ch, $options);
         $content  = curl_exec($ch);
         curl_close($ch);
-        
+
         return $content;
-
-
-
-
-        /*$client = self::getClient();
-
-        try {
-          $response = $client->get($url, [
-            'http_errors' => false,
-            'headers' => [
-              'Accept' => 'application/json',
-              'Content-type' => 'application/json'
-            ], 
-            'allow_redirects' => [
-              'max' => 50,
-            ]
-          ]);
-        } catch (ClientErrorResponseException $exception) {
-          error_log(print_r($exception,true));
-        }
-
-        return $response->getBody()->getContents();*/
       }
 
     }
