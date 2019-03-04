@@ -221,7 +221,5 @@
     }
   }
   
-  //add_action('init', function () {
-    new WpPostsIntegrationTool();
-  //});
+  new WpPostsIntegrationTool();
 ?>
