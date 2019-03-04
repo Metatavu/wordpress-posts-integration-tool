@@ -23,10 +23,10 @@
        */
       public function __construct() {
         add_action('wpPostsIntegration', [$this, 'loopPosts']);
+
         if (!wp_next_scheduled('wpPostsIntegration')) {
           wp_schedule_event(time(), 'hourly', 'wpPostsIntegration');
         }
-
       }
 
       /**
@@ -46,7 +46,8 @@
           $posts = json_decode(WpJSONClient::listPosts([
             'categories' => join(",", $categoryIds),
             'per_page' => $perPage, 
-            'page' => $pageNumber
+            'page' => $pageNumber,
+            '_embed' => true
           ]), true);
           
           if ($posts['data']['status'] == 400 || empty($posts[0])) { 
@@ -75,16 +76,22 @@
           $postObject['post_type'] = 'post';
           $postObject['post_status'] = 'draft';
           $postObject['post_category'] = $this->getCategoryIdsByPost($post);
-  
+
+          $imageUrl = null;
+
+          if (count($post['_embedded']['wp:featuredmedia']) > 0) {
+            $imageUrl = $post['_embedded']['wp:featuredmedia'][0]['media_details']['sizes']['full']['source_url'];
+          }
+          
           $importedPostMeta = $this->getImportedPostMeta($sourceName, $postId);
 
           if (count($importedPostMeta) > 0) {
             $postObject['ID'] = $importedPostMeta[0]->post_id;
             wp_update_post($postObject, true);
-            $this->generateFeaturedImage($post['featured_image_url'], $importedPostMeta[0]->post_id);
+            $this->generateFeaturedImage($imageUrl, $importedPostMeta[0]->post_id);
           } else {
             $newPostId = wp_insert_post($postObject);
-            $this->generateFeaturedImage($post['featured_image_url'], $newPostId);
+            $this->generateFeaturedImage($imageUrl, $newPostId);
             update_post_meta($newPostId, 'postsIntegrationToolSource', "$sourceName:$postId");
           }
         }
@@ -209,37 +216,6 @@
         }
         
         return $categoryIds;
-      }
-
-      /**
-       * Get plugins custom post id
-       */
-      private function getPluginCustomPostId() {
-        global $wpdb;
-
-        $postIds = $wpdb->get_results("SELECT ID FROM wp_posts WHERE post_type='integration_tool'");
-
-        if (count($postIds) == 0) {
-          $id = $this->createCustomPost();
-        } else {
-          $id = $postIds[0]->ID;
-        }
-
-        return $id;
-      }
-
-      /**
-       * Create custom post to store plugin meta data
-       */
-      private function createCustomPost() {
-        global $wpdb;
-
-        $postData = [
-          'post_content' => 'Integration tool',
-          'post_type' => 'integration_tool'
-        ];
-
-        return wp_insert_post($postData, true);
       }
 
     }
