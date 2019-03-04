@@ -1,0 +1,16 @@
+{
+	"name" : "wordpress-news-loader",
+	"description" : "Wordpress tool for loading and displaying news",
+	"keywords" : [
+		"wordpress",
+		"plugin"
+	],
+	"license" : "AGPL-3.0",
+	"type" : "wordpress-plugin",
+	"require" : {
+		"guzzle/guzzle": "~3.9",
+		"guzzlehttp/guzzle": "^6.3"
+	},
+	"repositories" : [
+	]
+}
