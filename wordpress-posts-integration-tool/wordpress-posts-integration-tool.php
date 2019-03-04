@@ -26,6 +26,7 @@
         if (!wp_next_scheduled('wpPostsIntegration')) {
           wp_schedule_event(time(), 'hourly', 'wpPostsIntegration');
         }
+
       }
 
       /**
@@ -41,14 +42,14 @@
         $perPage = 30;
         $pagesLeft = true;
 
-        while ($pagesLeft == true) {
+        while ($pagesLeft) {
           $posts = json_decode(WpJSONClient::listPosts([
             'categories' => join(",", $categoryIds),
             'per_page' => $perPage, 
             'page' => $pageNumber
           ]), true);
-
-          if ($posts['data']['status'] == 400 || empty($posts[0])) {
+          
+          if ($posts['data']['status'] == 400 || empty($posts[0])) { 
             $pagesLeft = false;
           } else {
             $this->updatePosts($posts);
@@ -63,12 +64,9 @@
        * @param $posts posts from anoother wp installation
        */
       private function updatePosts($posts) {
-        foreach ($posts as $post) {
-          // If post is downloaded from this wordpress installation we don't want to duplicate it
-          if ($post['metadata']['sourceWordpressName'] == Settings::getValue('wordpressName')) {
-            continue;
-          }
+        $sourceName = Settings::getValue('sourceWordpressName');
 
+        foreach ($posts as $post) {
           $postId = $post['id'];
           $postObject['post_date'] = $post['date'];
           $postObject['post_title'] = $post['title']['rendered'];
@@ -77,21 +75,31 @@
           $postObject['post_type'] = 'post';
           $postObject['post_status'] = 'draft';
           $postObject['post_category'] = $this->getCategoryIdsByPost($post);
-          
-          $wpPostId = get_post_meta($this->getPluginCustomPostId(), sprintf("integrated_post_id_%d", $postId), true);
+  
+          $importedPostMeta = $this->getImportedPostMeta($sourceName, $postId);
 
-          if (empty($wpPostId)) {
-            $newPostId = wp_insert_post($postObject);
-            $this->generateFeaturedImage($post['featured_image_url'], $wpPonewPostIdstId);
-            update_post_meta($this->getPluginCustomPostId(), sprintf("integrated_post_id_%s", $postId), $newPostId);
-            update_post_meta($newPostId, 'sourceWordpressName', Settings::getValue('sourceWordpressName'));
-          } else {
-            $postObject['ID'] = $wpPostId;
+          if (count($importedPostMeta) > 0) {
+            $postObject['ID'] = $importedPostMeta[0]->post_id;
             wp_update_post($postObject, true);
-            $this->generateFeaturedImage($post['featured_image_url'], $wpPostId);
-            update_post_meta($wpPostId, 'sourceWordpressName', Settings::getValue('sourceWordpressName'));
+            $this->generateFeaturedImage($post['featured_image_url'], $importedPostMeta[0]->post_id);
+          } else {
+            $newPostId = wp_insert_post($postObject);
+            $this->generateFeaturedImage($post['featured_image_url'], $newPostId);
+            update_post_meta($newPostId, 'postsIntegrationToolSource', "$sourceName:$postId");
           }
         }
+      }
+
+      /**
+       * Get imported postmeta
+       * 
+       * @param $source source
+       * @param $sourceId source id
+       * @return post meta object
+       */
+      private function getImportedPostMeta($source, $sourceId) {
+        global $wpdb;
+        return $wpdb->get_results("SELECT * FROM $wpdb->postmeta where meta_key = 'postsIntegrationToolSource' AND meta_value = '$source:$sourceId' ");
       }
 
       /**
@@ -132,27 +140,29 @@
        */
       private function getOtherWpCategoryIds() {
         $perPage = 100;
-        $page = 1;
+        $pageNumber = 1;
         $categoriesLeft = true;
+        $categoryIds = [];
 
         while ($categoriesLeft == true) {
           $allCategories = json_decode(WpJSONClient::listCategories([
             'per_page' => $perPage, 
             'page' => $pageNumber
           ]), true);
-
-          if (count($allCategories) < 100) {
+          
+          if (count($allCategories) < $perPage) {
             $categoriesLeft = false;
           }
           
           $wantedCategoryNames = array_map('strtolower', explode(",", Settings::getValue('categories')));
-          $categoryIds = [];
 
           foreach ($allCategories as $category) {
-            if (in_array(strtolower($category->name), $wantedCategoryNames)) {
-              array_push($categoryIds, $category->id);
+            if (in_array(strtolower($category['name']), $wantedCategoryNames)) {
+              array_push($categoryIds, $category['id']);
             }
           }
+
+          $pageNumber++;
         }
 
         return $categoryIds;
@@ -165,21 +175,39 @@
        * @param $post post
        */
       private function getCategoryIdsByPost($post) {
-        $postCategoryIds = $post['categories'];
-        $allCategories = json_decode(WpJSONClient::listCategories());
+        $perPage = 100;
+        $pageNumber = 1;
+        $categoriesLeft = true;
         $categoryIds = [];
 
-        foreach ($allCategories as $category) {
-          if (in_array($category->id, $postCategoryIds)) {
-            $categoryId = get_cat_ID($category->name);
+        $postCategoryIds = $post['categories'];
+        $categoryIds = [];
 
-            if ($categoryId == 0) {
-              $categoryId = wp_create_category($category->name);
-            }
+        while ($categoriesLeft == true) {
+          $allCategories = json_decode(WpJSONClient::listCategories([
+            'per_page' => $perPage, 
+            'page' => $pageNumber
+          ]));
 
-            array_push($categoryIds, $categoryId);
+          if (count($allCategories) < $perPage) {
+            $categoriesLeft = false;
           }
+          
+          foreach ($allCategories as $category) {
+            if (in_array($category->id, $postCategoryIds)) {
+              $categoryId = get_cat_ID($category->name);
+  
+              if ($categoryId == 0) {
+                $categoryId = wp_create_category($category->name);
+              }
+  
+              array_push($categoryIds, $categoryId);
+            }
+          }
+
+          $pageNumber++;
         }
+        
         return $categoryIds;
       }
 
