@@ -55,7 +55,7 @@
       /**
        * Lists categories 
        */
-      public static function listCategories() {
+      public static function listCategories($query) {
         $baseUrl = self::getBaseUrl();
 
         if (empty($baseUrl)) {
