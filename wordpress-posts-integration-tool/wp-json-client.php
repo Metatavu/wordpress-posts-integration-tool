@@ -55,7 +55,7 @@
       /**
        * Lists categories 
        */
-      public static function listCategories() {
+      public static function listCategories($query) {
         $baseUrl = self::getBaseUrl();
 
         if (empty($baseUrl)) {
@@ -72,24 +72,19 @@
        * @param $url url
        */
       private static function doGetRequest($url) {
-        $client = self::getClient();
+        $options = array(
+          CURLOPT_RETURNTRANSFER => true,   // return web page
+          CURLOPT_HEADER => false,  // don't return headers
+          CURLOPT_FOLLOWLOCATION => true,   // follow redirects
+          CURLOPT_MAXREDIRS => 10,     // stop after 10 redirects
+        ); 
+    
+        $ch = curl_init($url);
+        curl_setopt_array($ch, $options);
+        $content  = curl_exec($ch);
+        curl_close($ch);
 
-        try {
-          $response = $client->get($url, [
-            'http_errors' => false,
-            'headers' => [
-              'Accept' => 'application/json',
-              'Content-type' => 'application/json'
-            ], 
-            'allow_redirects' => [
-              'max' => 50,
-            ]
-          ]);
-        } catch (ClientErrorResponseException $exception) {
-          error_log(print_r($exception,true));
-        }
-
-        return $response->getBody()->getContents();
+        return $content;
       }
 
     }
