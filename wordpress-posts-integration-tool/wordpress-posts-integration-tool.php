@@ -22,10 +22,10 @@
        * Constructor
        */
       public function __construct() {
-        add_action('wpPostsIntegrationTask1', [$this, 'loopPosts']);
+        add_action('wpPostsIntegrationTask', [$this, 'loopPosts']);
 
-        if (!wp_next_scheduled('wpPostsIntegrationTask1')) {
-          wp_schedule_event(time(), 'hourly', 'wpPostsIntegrationTask1');
+        if (!wp_next_scheduled('wpPostsIntegrationTask')) {
+          wp_schedule_event(time(), 'hourly', 'wpPostsIntegrationTask');
         }
       }
 
