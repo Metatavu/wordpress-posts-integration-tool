@@ -38,7 +38,6 @@
         add_settings_section('wpjson', __( "WP JSON", 'postsIntegrationTool' ), null, 'postsIntegrationTool');
         $this->addFieldOption('wpjson', 'text', 'url', __( "WP JSON url", 'postsIntegrationTool'));
         $this->addFieldOption('wpjson', 'text', 'categories', __( "Categories", 'postsIntegrationTool'));
-        $this->addFieldOption('wpjson', 'text', 'wordpressName', __( "Your wordpress name", 'postsIntegrationTool'));
         $this->addFieldOption('wpjson', 'text', 'sourceWordpressName', __( "Source wordpress name", 'postsIntegrationTool'));
       }
 
