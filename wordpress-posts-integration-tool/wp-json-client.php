@@ -67,16 +67,31 @@
       }
 
       /**
+       * Lists tags 
+       */
+      public static function listTags($query) {
+        $baseUrl = self::getBaseUrl();
+
+        if (empty($baseUrl)) {
+          return;
+        }
+
+        $url = sprintf("%s/wp/v2/tags?%s", $baseUrl, http_build_query($query));
+        return self::doGetRequest($url);
+      }
+
+      /**
        * Do get request
        * 
        * @param $url url
        */
       private static function doGetRequest($url) {
         $options = array(
-          CURLOPT_RETURNTRANSFER => true,   // return web page
-          CURLOPT_HEADER => false,  // don't return headers
-          CURLOPT_FOLLOWLOCATION => true,   // follow redirects
-          CURLOPT_MAXREDIRS => 10,     // stop after 10 redirects
+          CURLOPT_RETURNTRANSFER => true,
+          CURLOPT_HEADER => false,
+          CURLOPT_FOLLOWLOCATION => true, 
+          CURLOPT_MAXREDIRS => 10,
+          CURLOPT_TIMEOUT => 15
         ); 
     
         $ch = curl_init($url);
