@@ -22,10 +22,41 @@
        * Constructor
        */
       public function __construct() {
-        add_action('wpPostsIntegrationTask', [$this, 'loopPosts']);
+        add_filter('cron_schedules', function ($schedules){
+          if(!isset($schedules["15min"])){
+            $schedules["15min"] = array(
+              'interval' => 15*60,
+              'display' => __('Once every 15 minutes'));
+          }
+          if(!isset($schedules["30min"])){
+            $schedules["30min"] = array(
+              'interval' => 30*60,
+              'display' => __('Once every 30 minutes'));
+          }
+          if(!isset($schedules["45min"])){
+            $schedules["45min"] = array(
+              'interval' => 45*60,
+              'display' => __('Once every 45 minutes'));
+        }
+          return $schedules;
+        });
 
-        if (!wp_next_scheduled('wpPostsIntegrationTask')) {
-          wp_schedule_event(time(), 'hourly', 'wpPostsIntegrationTask');
+        $hook = 'wpPostsIntegrationTask';
+        $currentSchedule = wp_get_schedule("wpPostsIntegrationTask");
+        $interval = 'hourly';
+        
+        add_action($hook, [$this, 'loopPosts']);
+
+        if (!empty(Settings::getValue('integrationInterval'))) {
+          $interval = Settings::getValue('integrationInterval');
+        }
+
+        if ($currentSchedule != $interval) {
+          wp_clear_scheduled_hook($hook);
+        }
+
+        if (!wp_next_scheduled($hook)) {
+          wp_schedule_event(time(), $interval, $hook);
         }
       }
 
@@ -40,6 +71,12 @@
           return;
         }
         
+        if (empty(Settings::getValue('weekFilter'))) {
+          $weekFilter = "1";
+        } else {
+          $weekFilter = Settings::getValue('weekFilter');
+        }
+
         $categoryIds = $this->getOtherWpCategoryIds();
         $pageNumber = 1;
         $perPage = 30;
@@ -50,6 +87,7 @@
             'categories' => join(",", $categoryIds),
             'per_page' => $perPage, 
             'page' => $pageNumber,
+            'after' => date("Y-m-d\TH:i:s", strtotime(sprintf('-%s weeks', $weekFilter))),
             '_embed' => true
           ]), true);
 
@@ -83,7 +121,6 @@
           $postObject['post_type'] = 'post';
           $postObject['post_status'] = 'draft';
           $imageUrl = null;
-          $categories = $this->getCategoryIdsByPost($post);
 
           if (count($post['_embedded']['wp:featuredmedia']) > 0) {
             $imageUrl = $post['_embedded']['wp:featuredmedia'][0]['media_details']['sizes']['full']['source_url'];
@@ -92,10 +129,14 @@
           $importedPostMeta = $this->getImportedPostMeta($sourceName, $postId);
 
           if (count($importedPostMeta) > 0) {
-            wp_set_post_categories($importedPostMeta[0]->post_id, $categories);
-            $postObject['ID'] = $importedPostMeta[0]->post_id;
             $existingPost = get_post($importedPostMeta[0]->post_id);
-            $postObject['post_status'] = $existingPost['post_status'] == "publish" ? "publish" : "draft";
+
+            if ($existingPost->post_status == "trash") {
+              continue;
+            }
+
+            $postObject['ID'] = $importedPostMeta[0]->post_id;
+            $postObject['post_status'] = $existingPost->post_status == "publish" ? "publish" : "draft";
             wp_update_post($postObject, true);
             $this->generateFeaturedImage($imageUrl, $importedPostMeta[0]->post_id);
           } else {
@@ -187,60 +228,23 @@
             'per_page' => $perPage, 
             'page' => $pageNumber
           ]), true);
-          
+
+          if (!is_array($allCategories) && !is_object($allCategories)) {
+            $categoriesLeft = false;
+          }
+
           if (count($allCategories) < $perPage) {
             $categoriesLeft = false;
           }
           
           $wantedCategoryNames = array_map('strtolower', explode(",", Settings::getValue('categories')));
-
-          foreach ($allCategories as $category) {
-            if (in_array(strtolower($category['name']), $wantedCategoryNames)) {
-              array_push($categoryIds, $category['id']);
-            }
-          }
-
-          $pageNumber++;
-        }
-
-        return $categoryIds;
-      }
-
-      /**
-       * Get category ids by post from this wp installation
-       * If there is no category we create one
-       * 
-       * @param $post post
-       */
-      private function getCategoryIdsByPost($post) {
-        $perPage = 100;
-        $pageNumber = 1;
-        $categoriesLeft = true;
-        $categoryIds = [];
-
-        $postCategoryIds = $post['categories'];
-        $categoryIds = [];
-
-        while ($categoriesLeft == true) {
-          $allCategories = json_decode(WpJSONClient::listCategories([
-            'per_page' => $perPage, 
-            'page' => $pageNumber
-          ]));
-
-          if (count($allCategories) < $perPage || $allCategories['data']['status'] == 400) {
-            $categoriesLeft = false;
-          }
           
-          foreach ($allCategories as $category) {
-            if (in_array($category->id, $postCategoryIds)) {
-              $categoryId = get_cat_ID($category->name);
-              if ($categoryId == 0) {
-                $categoryId = wp_create_category($category->name);
+            foreach ($allCategories as $category) {
+              if (in_array(strtolower($category['name']), $wantedCategoryNames)) {
+                array_push($categoryIds, $category['id']);
               }
-  
-              array_push($categoryIds, $categoryId);
             }
-          }
+          
 
           $pageNumber++;
         }

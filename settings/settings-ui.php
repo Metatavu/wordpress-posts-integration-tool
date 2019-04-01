@@ -39,6 +39,8 @@
         $this->addFieldOption('wpjson', 'text', 'url', __( "WP JSON url", 'postsIntegrationTool'));
         $this->addFieldOption('wpjson', 'text', 'categories', __( "Categories", 'postsIntegrationTool'));
         $this->addFieldOption('wpjson', 'text', 'sourceWordpressName', __( "Source wordpress name", 'postsIntegrationTool'));
+        $this->addFieldOption('wpjson', 'text', 'weekFilter', __( "Week filter", 'postsIntegrationTool'));
+        $this->addFieldOption('wpjson', 'text', 'integrationInterval', __( "Integration interval", 'postsIntegrationTool'));
       }
 
       /**
