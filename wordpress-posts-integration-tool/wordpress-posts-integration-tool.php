@@ -41,8 +41,8 @@
           return $schedules;
         });
 
-        $hook = 'wpPostsIntegrationTask';
-        $currentSchedule = wp_get_schedule("wpPostsIntegrationTask");
+        $hook = 'wp_posts_integration_task';
+        $currentSchedule = wp_get_schedule($hook);
         $interval = 'hourly';
         
         add_action($hook, [$this, 'loopPosts']);
