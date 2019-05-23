@@ -90,12 +90,16 @@
             'after' => date("Y-m-d\TH:i:s", strtotime(sprintf('-%s weeks', $weekFilter))),
             '_embed' => true
           ]), true);
-
+          
           if ($posts['data']['status'] == 400 || empty($posts[0])) { 
             $pagesLeft = false;
           } else {
             $this->updatePosts($posts);
-            $pageNumber++;
+            if (count($posts) < $perPage) {
+              $pagesLeft = false;
+            } else {
+              $pageNumber++;
+            }
           }
         }
       }
@@ -222,7 +226,8 @@
         $pageNumber = 1;
         $categoriesLeft = true;
         $categoryIds = [];
-
+        $wantedCategoryNames = $this->getCategoryNames();
+        
         while ($categoriesLeft == true) {
           $allCategories = json_decode(WpJSONClient::listCategories([
             'per_page' => $perPage, 
@@ -237,19 +242,28 @@
             $categoriesLeft = false;
           }
           
-          $wantedCategoryNames = array_map('strtolower', explode(",", Settings::getValue('categories')));
-          
-            foreach ($allCategories as $category) {
-              if (in_array(strtolower($category['name']), $wantedCategoryNames)) {
-                array_push($categoryIds, $category['id']);
-              }
+          foreach ($allCategories as $category) {
+            if (in_array(strtolower($category['name']), $wantedCategoryNames)) {
+              array_push($categoryIds, $category['id']);
             }
-          
-
+          }
+        
           $pageNumber++;
         }
 
+        if (count($categoryIds) != count($wantedCategoryNames)) {
+          error_log("Could not find all requested categories");
+        }
+
         return $categoryIds;
+      }
+
+      /**
+       * Returns category names as lowercased and trimmed
+       */
+      private function getCategoryNames() {
+        $categories = strtolower(Settings::getValue('categories'));
+        return array_map('trim', array_map('strtolower', explode(",", $categories)));
       }
 
     }
