@@ -3,7 +3,7 @@
  * Created on Feb 28, 2019
  * Plugin Name: Wordpress Posts Integration Tool
  * Description: Wordpress plugin for loading posts from other wp installation
- * Version: 1.1.0
+ * Version: 1.1.1
  * Author: Metatavu Oy
  */
 
