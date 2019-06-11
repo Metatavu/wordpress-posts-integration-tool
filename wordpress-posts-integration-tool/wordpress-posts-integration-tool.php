@@ -133,16 +133,7 @@
           $importedPostMeta = $this->getImportedPostMeta($sourceName, $postId);
 
           if (count($importedPostMeta) > 0) {
-            $existingPost = get_post($importedPostMeta[0]->post_id);
-
-            if ($existingPost->post_status == "trash") {
-              continue;
-            }
-
-            $postObject['ID'] = $importedPostMeta[0]->post_id;
-            $postObject['post_status'] = $existingPost->post_status == "publish" ? "publish" : "draft";
-            wp_update_post($postObject, true);
-            $this->generateFeaturedImage($imageUrl, $importedPostMeta[0]->post_id);
+            // Skipped already existing post
           } else {
             $postObject['post_category'] = $categories;
             $newPostId = wp_insert_post($postObject);
